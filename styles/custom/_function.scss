@@ -1,0 +1,96 @@
+@use "sass:math";
+
+@function px2rem($px) {
+    @return math.div($px, 16px) * 1rem;
+}
+
+@function rem2px($rem) {
+    @return math.div($rem, 1rem) * 16px;
+}
+
+// 用于生成CSS自定义属性（变量）样式
+@function custom-properties-css-var($key, $property, $default-value: null) {
+    @if $default-value ==null {
+        @return var(--#{$prefix}#{$property}-#{$key});
+    }
+
+    @else {
+        @return var(--#{$prefix}#{$property}-#{$key}, $default-value);
+    }
+}
+
+// $prefix === test  $property === pp1 $key === 0 $default-value === 111
+// 返回值是: var(--testpp1-0)
+// 有默认值是 return var(--testpp1-0, 111)
+
+
+
+@function generate-map-with-base-value($original-map, $base-value-map) {
+    $new-map: (
+    );
+
+@each $key, $value in $original-map {
+    @if map-has-key($base-value-map, $key) {
+        $new-map: map-merge(($key: (
+                    pc: $value,
+                    mob: map-get($base-value-map, $key),
+                )),
+            $new-map
+        );
+}
+
+@else {
+    $new-map: map-merge(($key: $value ), $new-map);
+}
+}
+
+@return $new-map;
+}
+
+$colors: (
+    primary: 'blue',
+    secondary: 'red',
+);
+
+$mobile-colors: (
+    primary: 'lightblue',
+    secondary: 'lightcoral',
+);
+
+@each $key, $value in $colors {
+    .#{$key}-color {
+        color: custom-properties-css-var($key, 'color');
+    }
+}
+
+$new-map: generate-map-with-base-value($colors, $mobile-colors);
+@media (max-width: 600px) {
+    @each $key, $value in $new-map {
+        .#{$key}-color {
+            color: map-get($value, mob);
+        }
+    }
+}
+
+
+
+// 生成的
+// PC 样式
+.primary-color {
+    color: var(--color-primary);
+}
+
+.secondary-color {
+    color: var(--color-secondary);
+}
+
+// 移动设备样式
+@media (max-width: 600px) {
+    .primary-color {
+        color: var(--color-primary-mobile);
+    }
+
+    .secondary-color {
+        color: var(--color-secondary-mobile);
+    }
+}
