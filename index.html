@@ -9,10 +9,10 @@
 
 </head>
 
-<body style="min-height: 400vh;">
-  <canvas id="canvas" style="position: sticky;top: 10%;width: 1980px;height: 1080px;"></canvas>
+<body style="min-height: 400vh;padding: 0px;margin: 0px;">
+  <canvas id="canvas" style="position: sticky;top: 0;width: 1980px;height: 1080px;"></canvas>
 
-  <h2 id="show">这是第<span>1</span>帧图片</h2>
+  <h2 id="show" style="z-index: 222222;">这是第<span>1</span>帧图片</h2>
   <script defer>
 
     const mp4url = 'test.mov';
@@ -29,7 +29,7 @@
 
       if (videoTrack != null) {
         mp4box.setExtractionOptions(videoTrack.id, 'video', {
-          nbSamples: 1500
+          nbSamples: 1000
         })
       }
 
@@ -114,8 +114,8 @@
       console.log(videoFrames, 'videoFrames');
 
       const canvas = document.getElementById('canvas')
-      canvas.width = 980 * 1; // 实际渲染像素
-      canvas.height = 540 * 1; // 实际渲染像素
+      canvas.width = 980 * 2; // 实际渲染像素
+      canvas.height = 540 * 2; // 实际渲染像素
 
       const ctx = canvas.getContext("2d");
       const span = document.getElementById('show').querySelector('span')
@@ -127,19 +127,30 @@
 
     function scrollRender(ctx) {
       document.addEventListener('scroll', () => {
-        requestAnimationFrame(() => {
-          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-          ctx.drawImage(
-            videoFrames[scrollY % videoFrames.length].img,
-            0, 0,
-            videoFrames[scrollY % videoFrames.length].img.width,
-            videoFrames[scrollY % videoFrames.length].img.height,
-            0,
-            0,
-            ctx.canvas.width,
-            ctx.canvas.height
-          )
-        })
+        if (scrollY >= videoFrames.length) return
+        ctx.drawImage(
+          videoFrames[scrollY % videoFrames.length].img,
+          0, 0,
+          videoFrames[scrollY % videoFrames.length].img.width,
+          videoFrames[scrollY % videoFrames.length].img.height,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        ctx.drawImage(
+          videoFrames[scrollY % videoFrames.length].img,
+          0, 0,
+          videoFrames[scrollY % videoFrames.length].img.width,
+          videoFrames[scrollY % videoFrames.length].img.height,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
       })
     }
 
@@ -150,13 +161,23 @@
           clearInterval(interval)
           return
         }
+
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.drawImage(videoFrames[index].img, 0, 0, videoFrames[index].img.width, videoFrames[index].img.height, 0, 0, ctx.canvas.width,
-          ctx.canvas.height)
+
+        ctx.drawImage(
+          videoFrames[index].img,
+          0, 0,
+          videoFrames[index].img.width * 2,
+          videoFrames[index].img.height * 2,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
 
         index++
         span.innerText = index
-      }, 1000 / 30)
+      }, 30)
     }
 
 
