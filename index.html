@@ -2,43 +2,208 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YUV Viewer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="./node_modules/mp4box/dist/mp4box.all.js"></script>
+
 </head>
 
-<body>
-    <div class="h1">输入文件</div>
-    <input type="file" name="yuv文件" id="yuv_id">
+<body style="min-height: 400vh;padding: 0px;margin: 0px;">
+  <canvas id="canvas" style="position: sticky;top: 0;width: 1980px;height: 1080px;"></canvas>
 
-    <div class="format-select">
-        <label for="yuv_format">选择YUV格式:</label>
-        <select id="yuv_format">
-            <option value="yuv420">YUV 4:2:0</option>
-            <option value="yuv422">YUV 4:2:2</option>
-            <option value="yuv444">YUV 4:4:4</option>
-        </select>
-    </div>
+  <h2 id="show" style="z-index: 222222;">这是第<span>1</span>帧图片</h2>
+  <script defer>
 
-    <div class="simple">
-        展示图片
-        <canvas class="simple-canvas"></canvas>
-    </div>
+    const mp4url = 'test.mov';
+    const mp4box = MP4Box.createFile();
+    let videoTrack = null;
+    let videoDecoder = null;
+    const videoFrames = [];
 
-    <div class="canvas-y">
-        y分量:
-        <canvas class="y"></canvas>
-    </div>
-    <div class="canvas-u">
-        u分量:
-        <canvas class="u"></canvas>
-    </div>
-    <div class="canvas-v">
-        v分量:
-        <canvas class="v"></canvas>
-    </div>
+    let nbSampleTotal = 0;
+    let countSample = 0;
 
-    <script defer type="module" src="./src/main.ts"></script>
+    mp4box.onReady = function (info) {
+      videoTrack = info.videoTracks[0];
+
+      if (videoTrack != null) {
+        mp4box.setExtractionOptions(videoTrack.id, 'video', {
+          nbSamples: 1000
+        })
+      }
+
+      const videoW = videoTrack.track_width;
+      const videoH = videoTrack.track_height;
+
+      videoDecoder = new VideoDecoder({
+        output: (videoFrame) => {
+          createImageBitmap(videoFrame).then((img) => {
+            videoFrames.push({
+              img,
+              duration: videoFrame.duration,
+              timestamp: videoFrame.timestamp
+            });
+            videoFrame.close();
+          });
+        },
+        error: (err) => {
+          console.error('videoDecoder', err);
+        }
+      });
+
+      nbSampleTotal = videoTrack.nb_samples;
+
+      videoDecoder.configure({
+        codec: videoTrack.codec,
+        codedWidth: videoW,
+        codedHeight: videoH,
+        description: getExtradata()
+      });
+
+      console.log(videoTrack, getExtradata());
+
+
+      mp4box.start();
+    };
+
+    mp4box.onSamples = function (trackId, ref, samples) {
+      // samples其实就是采用数据了
+      if (videoTrack.id === trackId) {
+        mp4box.stop();
+
+        countSample += samples.length;
+
+        for (const sample of samples) {
+          const type = sample.is_sync ? 'key' : 'delta';
+
+          const chunk = new EncodedVideoChunk({
+            type,
+            timestamp: sample.cts,
+            duration: sample.duration,
+            data: sample.data
+          });
+
+          videoDecoder.decode(chunk);
+        }
+
+        if (countSample === nbSampleTotal) {
+          videoDecoder.flush();
+        }
+      }
+    };
+
+    function getExtradata() {
+      const entry = mp4box.moov.traks[0].mdia.minf.stbl.stsd.entries[0];
+
+      console.log(mp4box.moov.traks[0].mdia.minf);
+
+
+      const box = entry.avcC ?? entry.hvcC ?? entry.vpcC;
+      if (box != null) {
+        const stream = new DataStream(
+          undefined,
+          0,
+          DataStream.BIG_ENDIAN
+        )
+        box.write(stream)
+        return new Uint8Array(stream.buffer.slice(8))
+      }
+    };
+    function render() {
+      console.log(videoFrames, 'videoFrames');
+
+      const canvas = document.getElementById('canvas')
+      canvas.width = 980 * 2; // 实际渲染像素
+      canvas.height = 540 * 2; // 实际渲染像素
+
+      const ctx = canvas.getContext("2d");
+      const span = document.getElementById('show').querySelector('span')
+
+      // 渲染
+      // autoRender(ctx)
+      scrollRender(ctx)
+    }
+
+    function scrollRender(ctx) {
+      document.addEventListener('scroll', () => {
+        if (scrollY >= videoFrames.length) return
+        ctx.drawImage(
+          videoFrames[scrollY % videoFrames.length].img,
+          0, 0,
+          videoFrames[scrollY % videoFrames.length].img.width,
+          videoFrames[scrollY % videoFrames.length].img.height,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        ctx.drawImage(
+          videoFrames[scrollY % videoFrames.length].img,
+          0, 0,
+          videoFrames[scrollY % videoFrames.length].img.width,
+          videoFrames[scrollY % videoFrames.length].img.height,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
+      })
+    }
+
+    function autoRender(ctx) {
+      let index = 0
+      const interval = setInterval(() => {
+        if (index > videoFrames.length | (videoFrames[index] == undefined && index != 0)) {
+          clearInterval(interval)
+          return
+        }
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        ctx.drawImage(
+          videoFrames[index].img,
+          0, 0,
+          videoFrames[index].img.width * 2,
+          videoFrames[index].img.height * 2,
+          0,
+          0,
+          ctx.canvas.width,
+          ctx.canvas.height
+        )
+
+        index++
+        span.innerText = index
+      }, 30)
+    }
+
+
+    fetch(mp4url).then(res => res.body.getReader()).then(reader => {
+      let offset = 0;
+
+      function pump() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            mp4box.flush();
+            render()
+            return;
+          }
+
+          let buffer = value.buffer;
+          buffer.fileStart = offset;
+          offset += value.byteLength;
+
+          mp4box.appendBuffer(buffer);
+
+          pump();
+        });
+      }
+      pump();
+    })
+  </script>
 </body>
 
 </html>

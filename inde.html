@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YUV Viewer</title>
+</head>
+
+<body>
+    <div class="h1">输入文件</div>
+    <input type="file" name="yuv文件" id="yuv_id">
+
+    <div class="format-select">
+        <label for="yuv_format">选择YUV格式:</label>
+        <select id="yuv_format">
+            <option value="yuv444">YUV 4:4:4</option>
+            <option value="yuv420">YUV 4:2:0</option>
+            <option value="yuv422">YUV 4:2:2</option>
+        </select>
+    </div>
+
+    <div class="simple">
+        展示图片
+        <canvas class="simple-canvas"></canvas>
+    </div>
+
+    <div class="canvas-y">
+        y分量:
+        <canvas class="y"></canvas>
+    </div>
+    <div class="canvas-u">
+        u分量:
+        <canvas class="u"></canvas>
+    </div>
+    <div class="canvas-v">
+        v分量:
+        <canvas class="v"></canvas>
+    </div>
+
+    <script defer type="module" src="./src/main.ts"></script>
+</body>
+
+</html>
